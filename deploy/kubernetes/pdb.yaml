@@ -1,0 +1,13 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: rosa-regional-frontend-api
+  namespace: rosa-regional-frontend
+  labels:
+    app.kubernetes.io/name: rosa-regional-frontend-api
+    app.kubernetes.io/part-of: rosa
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: rosa-regional-frontend-api

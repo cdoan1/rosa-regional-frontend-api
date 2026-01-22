@@ -1,0 +1,51 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: rosa-regional-frontend
+
+resources:
+  - namespace.yaml
+  - serviceaccount.yaml
+  - deployment.yaml
+  - service.yaml
+  - hpa.yaml
+  - pdb.yaml
+
+commonLabels:
+  app.kubernetes.io/name: rosa-regional-frontend-api
+  app.kubernetes.io/part-of: rosa
+  app.kubernetes.io/managed-by: kustomize
+
+images:
+  - name: quay.io/openshift/rosa-regional-frontend-api
+    newTag: latest
+
+# ConfigMap generated from literals - override these values per environment
+# Usage: kustomize edit set configmap rosa-regional-frontend-api-config --from-literal=KEY=value
+# Or create an overlay with patches
+configMapGenerator:
+  - name: rosa-regional-frontend-api-config
+    literals:
+      - LOG_LEVEL=info
+      - LOG_FORMAT=json
+      - MAESTRO_URL=http://maestro:8000
+      - DYNAMODB_REGION=us-east-2
+      - DYNAMODB_TABLE=rosa-customer-accounts
+      - API_PORT=8000
+      - HEALTH_PORT=8080
+      - METRICS_PORT=9090
+
+# Disable the hash suffix on the ConfigMap name so envFrom reference works
+generatorOptions:
+  disableNameSuffixHash: true
+
+# IRSA Configuration - Override these in overlays per environment
+# The ServiceAccount annotation is patched to set the IAM role ARN
+patches:
+  - target:
+      kind: ServiceAccount
+      name: rosa-regional-frontend-api
+    patch: |-
+      - op: replace
+        path: /metadata/annotations/eks.amazonaws.com~1role-arn
+        value: arn:aws:iam::ACCOUNT_ID:role/rosa-regional-frontend-api-role

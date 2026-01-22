@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: rosa-regional-frontend
+  labels:
+    app.kubernetes.io/name: rosa-regional-frontend-api
+    app.kubernetes.io/part-of: rosa

@@ -1,0 +1,57 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: rosa-regional-frontend-api
+  namespace: rosa-regional-frontend
+  labels:
+    app.kubernetes.io/name: rosa-regional-frontend-api
+    app.kubernetes.io/part-of: rosa
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: rosa-regional-frontend-api
+  ports:
+    - name: api
+      port: 8000
+      targetPort: api
+      protocol: TCP
+    - name: health
+      port: 8080
+      targetPort: health
+      protocol: TCP
+    - name: metrics
+      port: 9090
+      targetPort: metrics
+      protocol: TCP
+---
+# Service for external access via AWS Load Balancer
+# For private EKS clusters, use internal scheme to expose within VPC
+apiVersion: v1
+kind: Service
+metadata:
+  name: rosa-regional-frontend-api-lb
+  namespace: rosa-regional-frontend
+  labels:
+    app.kubernetes.io/name: rosa-regional-frontend-api
+    app.kubernetes.io/part-of: rosa
+  annotations:
+    # AWS Load Balancer Controller annotations for internal NLB
+    # "nlb-ip" type creates an NLB with IP targets (works with Fargate and regular nodes)
+    service.beta.kubernetes.io/aws-load-balancer-type: "nlb-ip"
+    # Use "internal" for private clusters (accessible from VPC/bastion)
+    service.beta.kubernetes.io/aws-load-balancer-scheme: "internal"
+    # Enable cross-zone load balancing
+    service.beta.kubernetes.io/aws-load-balancer-cross-zone-load-balancing-enabled: "true"
+    # Health check configuration
+    service.beta.kubernetes.io/aws-load-balancer-healthcheck-path: /healthz
+    service.beta.kubernetes.io/aws-load-balancer-healthcheck-port: "8080"
+    service.beta.kubernetes.io/aws-load-balancer-healthcheck-protocol: HTTP
+spec:
+  type: LoadBalancer
+  selector:
+    app.kubernetes.io/name: rosa-regional-frontend-api
+  ports:
+    - name: api
+      port: 80
+      targetPort: api
+      protocol: TCP
