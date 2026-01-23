@@ -75,6 +75,8 @@ func New(cfg *config.Config, logger *slog.Logger) (*Server, error) {
 	healthRouter := mux.NewRouter()
 	healthRouter.HandleFunc("/healthz", healthHandler.Liveness).Methods(http.MethodGet)
 	healthRouter.HandleFunc("/readyz", healthHandler.Readiness).Methods(http.MethodGet)
+	healthRouter.HandleFunc("/v0/live", healthHandler.Liveness).Methods(http.MethodGet)
+	healthRouter.HandleFunc("/v0/ready", healthHandler.Readiness).Methods(http.MethodGet)
 
 	// Create metrics router
 	metricsRouter := mux.NewRouter()

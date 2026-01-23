@@ -1,0 +1,1 @@
+kubectl port-forward svc/rosa-regional-frontend 8080:8080 -n rosa-regional-frontend --address 0.0.0.0

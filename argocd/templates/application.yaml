@@ -1,0 +1,77 @@
+# Argo CD Application for ROSA Regional Frontend API
+#
+# Usage:
+#   1. Update the values below to match your environment
+#   2. Apply: kubectl apply -f argocd/templates/application.yaml
+#
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: frontend-api
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+  labels:
+    app.kubernetes.io/name: frontend-api
+    app.kubernetes.io/part-of: rosa-regional-frontend
+spec:
+  project: default
+
+  source:
+    repoURL: https://github.com/cdoan1/rosa-regional-frontend-api.git
+    targetRevision: main
+    path: helm/rosa-regional-frontend-api
+
+    helm:
+      releaseName: frontend-api
+      valueFiles:
+        - values.yaml
+
+      parameters:
+        # Container image configuration
+        - name: image.repository
+          value: "quay.io/cdoan0/rosa-regional-frontend-api"
+        - name: image.tag
+          value: "7cebda9"
+
+        # Application configuration
+        - name: config.logLevel
+          value: "info"
+        - name: config.dynamodb.region
+          value: "us-east-2"
+        - name: config.dynamodb.tableName
+          value: "rosa-customer-accounts"
+        - name: config.maestroUrl
+          value: "http://maestro:8000"
+
+        # Replicas
+        - name: replicaCount
+          value: "1"
+
+        # Resource configuration
+        - name: resources.requests.cpu
+          value: "100m"
+        - name: resources.requests.memory
+          value: "128Mi"
+        - name: resources.limits.cpu
+          value: "500m"
+        - name: resources.limits.memory
+          value: "512Mi"
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: rosa-regional-frontend
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m

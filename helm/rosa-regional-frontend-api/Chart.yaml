@@ -1,0 +1,15 @@
+apiVersion: v2
+name: rosa-regional-frontend-api
+description: A Helm chart for deploying the ROSA Regional Frontend API
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - rosa
+  - openshift
+  - aws
+  - api
+maintainers:
+  - name: Red Hat
+sources:
+  - https://github.com/openshift-online/rosa-regional-frontend-api

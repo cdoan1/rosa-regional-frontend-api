@@ -1,0 +1,12 @@
+---
+apiVersion: elbv2.k8s.aws/v1beta1
+kind: TargetGroupBinding
+metadata:
+  name: rosa-regional-frontend
+  namespace: rosa-regional-frontend
+spec:
+  serviceRef:
+    name: rosa-regional-frontend
+    port: 8080
+  targetGroupARN: TGB_ARN
+  targetType: ip

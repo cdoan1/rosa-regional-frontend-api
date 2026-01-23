@@ -1,0 +1,95 @@
+# Default values for rosa-regional-frontend-api
+
+# Number of replicas
+replicaCount: 1
+
+# Image configuration
+image:
+  repository: quay.io/cdoan1/rosa-regional-frontend-api
+  tag: "latest"
+  pullPolicy: Always
+
+# Image pull secrets (if using private registry)
+imagePullSecrets: []
+
+# Override the name of the chart
+nameOverride: ""
+fullnameOverride: ""
+
+# Pod annotations
+podAnnotations: {}
+
+# Pod security context
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  runAsGroup: 1000
+  fsGroup: 1000
+
+# Container security context
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop:
+      - ALL
+
+# Application configuration
+config:
+  logLevel: "info"
+  logFormat: "json"
+  maestroUrl: "http://maestro:8000"
+  dynamodb:
+    region: "us-east-2"
+    tableName: "rosa-customer-accounts"
+    endpoint: ""
+  ports:
+    api: 8000
+    health: 8080
+    metrics: 9090
+
+# Service configuration
+service:
+  type: ClusterIP
+  ports:
+    api: 8000
+    health: 8080
+    metrics: 9090
+
+# Resource limits and requests
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+# Node selector
+nodeSelector: {}
+
+# Tolerations
+tolerations: []
+
+# Affinity rules
+affinity: {}
+
+# Liveness probe configuration
+livenessProbe:
+  httpGet:
+    path: /healthz
+    port: health
+  initialDelaySeconds: 10
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+# Readiness probe configuration
+readinessProbe:
+  httpGet:
+    path: /readyz
+    port: health
+  initialDelaySeconds: 5
+  periodSeconds: 5
+  timeoutSeconds: 3
+  failureThreshold: 3

@@ -1,4 +1,4 @@
-.PHONY: build test lint clean image image-push run generate
+.PHONY: build test lint clean image image-push image-release run generate
 
 BINARY_NAME := rosa-regional-frontend-api
 IMAGE_REPO ?= quay.io/openshift/rosa-regional-frontend-api
@@ -36,6 +36,15 @@ image:
 image-push: image
 	docker push $(IMAGE_REPO):$(IMAGE_TAG)
 	docker push $(IMAGE_REPO):$(GIT_SHA)
+
+# Build and push multi-arch image (linux/amd64 and linux/arm64)
+image-release:
+	podman manifest rm $(IMAGE_REPO):$(IMAGE_TAG) 2>/dev/null || true
+	podman manifest create $(IMAGE_REPO):$(IMAGE_TAG)
+	podman build --platform linux/amd64 --manifest $(IMAGE_REPO):$(IMAGE_TAG) .
+	podman build --platform linux/arm64 --manifest $(IMAGE_REPO):$(IMAGE_TAG) .
+	podman manifest push --all $(IMAGE_REPO):$(IMAGE_TAG) docker://$(IMAGE_REPO):$(IMAGE_TAG)
+	podman manifest push --all $(IMAGE_REPO):$(IMAGE_TAG) docker://$(IMAGE_REPO):$(GIT_SHA)
 
 # Run locally
 run: build
