@@ -1,0 +1,88 @@
+# Argo CD Application for ROSA Regional Frontend
+#
+# This application deploys the rosa-regional-frontend using a Helm chart
+# that dynamically reads configuration from the aws-lbc-cluster-config
+# ConfigMap in kube-system namespace using Helm's lookup function.
+#
+# Prerequisites:
+#   - aws-lbc-cluster-config ConfigMap must exist in kube-system namespace
+#   - ConfigMap should contain:
+#       - region: AWS region
+#       - cluster-name: EKS cluster name
+#       - vpc-id: VPC ID
+#       - api-target-group-arn: Target Group ARN for the API
+#       - role-arn: IAM role ARN
+#
+# Usage:
+#   kubectl apply -f argocd/rosa-regional-frontend/application.yaml
+#
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: rosa-regional-frontend
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+  labels:
+    app.kubernetes.io/name: rosa-regional-frontend
+    app.kubernetes.io/part-of: rosa-regional-frontend
+spec:
+  project: default
+
+  source:
+    repoURL: https://github.com/cdoan1/rosa-regional-frontend-api.git
+    targetRevision: add-helm-chart
+    path: deploy/helm-manifests
+
+    helm:
+      releaseName: rosa-regional-frontend
+
+      # The chart automatically reads from aws-lbc-cluster-config ConfigMap:
+      #   - region → DYNAMODB_REGION
+      #   - api-target-group-arn → TargetGroupBinding ARN
+      #   - cluster-name, vpc-id, role-arn → app-config ConfigMap
+      #
+      # Override values as needed below:
+      parameters:
+        # Image configuration
+        - name: image.repository
+          value: "quay.io/cdoan0/rosa-regional-frontend-api"
+        - name: image.tag
+          value: "latest"
+
+        # Source ConfigMap for cluster configuration (defaults shown)
+        # - name: clusterConfig.configMapName
+        #   value: "aws-lbc-cluster-config"
+        # - name: clusterConfig.configMapNamespace
+        #   value: "kube-system"
+
+        # Application settings
+        - name: config.dynamodb.tableName
+          value: "rosa-customer-accounts"
+        - name: config.maestroUrl
+          value: "http://maestro:8000"
+        - name: config.logLevel
+          value: "info"
+
+        # Target Group Binding is automatically enabled
+        # ARN is read from ConfigMap key "api-target-group-arn"
+        - name: targetGroupBinding.enabled
+          value: "true"
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: rosa-regional-frontend
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m

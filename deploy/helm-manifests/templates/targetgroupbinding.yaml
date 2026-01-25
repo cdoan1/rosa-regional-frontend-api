@@ -1,0 +1,24 @@
+{{/*
+TargetGroupBinding resource for AWS Load Balancer Controller.
+The Target Group ARN is sourced from aws-lbc-cluster-config ConfigMap
+(key: "api-target-group-arn") or from .Values.targetGroupBinding.targetGroupArn
+*/}}
+{{- $tgArn := include "rosa-regional-frontend.apiTargetGroupArn" . }}
+{{- if and .Values.targetGroupBinding.enabled $tgArn (ne $tgArn "") }}
+apiVersion: elbv2.k8s.aws/v1beta1
+kind: TargetGroupBinding
+metadata:
+  name: rosa-regional-frontend
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    {{- include "rosa-regional-frontend.labels" . | nindent 4 }}
+  annotations:
+    # Source of Target Group ARN
+    helm.sh/resource-policy: keep
+spec:
+  serviceRef:
+    name: rosa-regional-frontend
+    port: {{ .Values.ports.envoy }}
+  targetGroupARN: {{ $tgArn }}
+  targetType: ip
+{{- end }}

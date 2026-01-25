@@ -1,0 +1,28 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: rosa-regional-frontend
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    {{- include "rosa-regional-frontend.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  selector:
+    {{- include "rosa-regional-frontend.selectorLabels" . | nindent 4 }}
+  ports:
+    - name: http
+      port: {{ .Values.ports.envoy }}
+      targetPort: {{ .Values.ports.envoy }}
+      protocol: TCP
+    - name: api
+      port: {{ .Values.ports.api }}
+      targetPort: api
+      protocol: TCP
+    - name: health
+      port: {{ .Values.ports.health }}
+      targetPort: health
+      protocol: TCP
+    - name: metrics
+      port: {{ .Values.ports.metrics }}
+      targetPort: metrics
+      protocol: TCP

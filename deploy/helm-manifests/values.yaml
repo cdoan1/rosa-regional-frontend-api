@@ -1,0 +1,79 @@
+# Default values for rosa-regional-frontend
+#
+# These values are used as fallbacks if the aws-lbc-cluster-config
+# ConfigMap is not found or doesn't contain the expected keys.
+#
+# The chart uses Helm's lookup function to read from:
+#   ConfigMap: aws-lbc-cluster-config
+#   Namespace: kube-system
+#
+# Expected ConfigMap keys:
+#   - region: AWS region (e.g., us-east-2)
+#   - cluster-name: EKS cluster name
+#   - vpc-id: VPC ID
+#   - api-target-group-arn: Target Group ARN for API
+#   - role-arn: IAM role ARN for LBC
+#
+
+# Source ConfigMap configuration
+clusterConfig:
+  # ConfigMap name to lookup for cluster configuration
+  configMapName: aws-lbc-cluster-config
+  # Namespace where the ConfigMap exists
+  configMapNamespace: kube-system
+
+# Image configuration
+image:
+  repository: quay.io/cdoan0/rosa-regional-frontend-api
+  tag: latest
+  pullPolicy: Always
+
+# Application configuration (fallback values if ConfigMap lookup fails)
+config:
+  logLevel: info
+  logFormat: json
+  dynamodb:
+    # Will be overridden by "region" from ConfigMap if available
+    region: us-east-2
+    tableName: rosa-customer-accounts
+  maestroUrl: http://maestro:8000
+
+# Port configuration
+ports:
+  api: 8000
+  health: 8081
+  metrics: 9090
+  envoy: 8080
+
+# Replica count
+replicaCount: 1
+
+# Resource configuration
+resources:
+  app:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  envoy:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+
+# Target Group Binding configuration
+# ARN is automatically read from ConfigMap key "api-target-group-arn"
+# This value is only used as a fallback if ConfigMap doesn't have the key
+targetGroupBinding:
+  enabled: true
+  # Fallback Target Group ARN (if not found in ConfigMap)
+  targetGroupArn: ""
+
+# Namespace configuration
+namespace:
+  create: true
+  name: rosa-regional-frontend

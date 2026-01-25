@@ -1,0 +1,30 @@
+# Application ConfigMap
+# Values are sourced from aws-lbc-cluster-config ConfigMap via Helm lookup
+#
+# Expected keys in aws-lbc-cluster-config:
+#   - region: AWS region (e.g., us-east-2)
+#   - cluster-name: EKS cluster name
+#   - vpc-id: VPC ID
+#   - api-target-group-arn: Target Group ARN for API
+#   - role-arn: IAM role ARN
+#
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    {{- include "rosa-regional-frontend.labels" . | nindent 4 }}
+  annotations:
+    helm.sh/hook-weight: "-5"
+data:
+  # DynamoDB region - sourced from aws-lbc-cluster-config "region" key
+  DYNAMODB_REGION: {{ include "rosa-regional-frontend.awsRegion" . | quote }}
+  DYNAMODB_TABLE: {{ .Values.config.dynamodb.tableName | quote }}
+  MAESTRO_URL: {{ .Values.config.maestroUrl | quote }}
+  LOG_LEVEL: {{ .Values.config.logLevel | quote }}
+  # Additional values from cluster config (for reference/debugging)
+  CLUSTER_NAME: {{ include "rosa-regional-frontend.clusterName" . | quote }}
+  VPC_ID: {{ include "rosa-regional-frontend.vpcId" . | quote }}
+  ROLE_ARN: {{ include "rosa-regional-frontend.roleArn" . | quote }}
+  API_TARGET_GROUP_ARN: {{ include "rosa-regional-frontend.apiTargetGroupArn" . | quote }}

@@ -1,0 +1,126 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rosa-regional-frontend
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    {{- include "rosa-regional-frontend.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "rosa-regional-frontend.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "rosa-regional-frontend.selectorLabels" . | nindent 8 }}
+      annotations:
+        # Force restart when ConfigMaps change
+        checksum/app-config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        checksum/envoy-config: {{ include (print $.Template.BasePath "/envoy-configmap.yaml") . | sha256sum }}
+    spec:
+      containers:
+        # =================================================================
+        # Main application container
+        # =================================================================
+        - name: rosa-regional-frontend
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args:
+            - serve
+            - --log-level=$(LOG_LEVEL)
+            - --log-format={{ .Values.config.logFormat }}
+            - --maestro-url=$(MAESTRO_URL)
+            - --dynamodb-region=$(DYNAMODB_REGION)
+            - --dynamodb-table=$(DYNAMODB_TABLE)
+            - --api-port={{ .Values.ports.api }}
+            - --health-port={{ .Values.ports.health }}
+            - --metrics-port={{ .Values.ports.metrics }}
+          env:
+            - name: LOG_LEVEL
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: LOG_LEVEL
+            - name: MAESTRO_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: MAESTRO_URL
+            - name: DYNAMODB_REGION
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: DYNAMODB_REGION
+            - name: DYNAMODB_TABLE
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: DYNAMODB_TABLE
+          ports:
+            - name: api
+              containerPort: {{ .Values.ports.api }}
+              protocol: TCP
+            - name: health
+              containerPort: {{ .Values.ports.health }}
+              protocol: TCP
+            - name: metrics
+              containerPort: {{ .Values.ports.metrics }}
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /v0/live
+              port: health
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /v0/ready
+              port: health
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+          resources:
+            {{- toYaml .Values.resources.app | nindent 12 }}
+
+        # =================================================================
+        # Envoy sidecar - routes all external traffic
+        # =================================================================
+        - name: envoy
+          image: envoyproxy/envoy:v1.31-latest
+          ports:
+            - containerPort: {{ .Values.ports.envoy }}
+              name: http
+              protocol: TCP
+          volumeMounts:
+            - name: envoy-config
+              mountPath: /etc/envoy
+              readOnly: true
+          command:
+            - envoy
+            - -c
+            - /etc/envoy/envoy.yaml
+            - --log-level
+            - info
+          livenessProbe:
+            httpGet:
+              path: /v0/live
+              port: {{ .Values.ports.envoy }}
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /v0/live
+              port: {{ .Values.ports.envoy }}
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          resources:
+            {{- toYaml .Values.resources.envoy | nindent 12 }}
+
+      volumes:
+        - name: envoy-config
+          configMap:
+            name: envoy-config
