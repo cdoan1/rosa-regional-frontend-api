@@ -3,6 +3,12 @@
 # Namespace to deploy into
 namespace: rosa-regional-frontend
 
+# Service Account configuration
+serviceAccount:
+  create: true
+  name: rosa-regional-frontend-sa
+  annotations: {}
+
 # Application configuration
 app:
   name: rosa-regional-frontend
