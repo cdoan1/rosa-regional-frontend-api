@@ -47,17 +47,3 @@ Selector labels
 app.kubernetes.io/name: {{ include "rosa-regional-frontend.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
-
-{{/*
-lookupConfigMapValue retrieves a key from a ConfigMap. Returns "" when run offline (e.g. helm template) or when ConfigMap is missing.
-Usage: include "lookupConfigMapValue" (dict "Namespace" "kube-system" "Name" "bootstrap-output" "Key" "api_target_group_arn" "Scope" .)
-*/}}
-{{- define "lookupConfigMapValue" -}}
-{{- $key := .Key -}}
-{{- $cm := lookup "v1" "ConfigMap" .Namespace .Name -}}
-{{- if and $cm $cm.data -}}
-{{- index $cm.data $key | default "" -}}
-{{- else -}}
-{{- "" -}}
-{{- end -}}
-{{- end -}}

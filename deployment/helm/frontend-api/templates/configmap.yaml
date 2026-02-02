@@ -1,9 +1,10 @@
+{{- if .Values.frontendApi.envoy.enabled }}
 ---
 apiVersion: v1
 kind: ConfigMap
 metadata:
   name: envoy-config
-  namespace: {{ .Values.namespace }}
+  namespace: {{ .Values.frontendApi.namespace }}
 data:
   envoy.yaml: |
     static_resources:
@@ -12,7 +13,7 @@ data:
           address:
             socket_address:
               address: 0.0.0.0
-              port_value: {{ .Values.service.ports.http }}
+              port_value: {{ .Values.frontendApi.service.ports.http }}
           filter_chains:
             - filters:
                 - name: envoy.filters.network.http_connection_manager
@@ -29,26 +30,32 @@ data:
                         - name: backend
                           domains: ["*"]
                           routes:
+                            # Health check endpoints → app's health port (8081)
                             - match:
                                 prefix: "/v0/live"
                               route:
                                 cluster: app_health
                                 timeout: 5s
+                                prefix_rewrite: "/healthz"
                             - match:
                                 prefix: "/v0/ready"
                               route:
                                 cluster: app_health
                                 timeout: 5s
+                                prefix_rewrite: "/readyz"
+                            # API routes → app's API port (8000)
                             - match:
                                 prefix: "/api/"
                               route:
                                 cluster: app_api
                                 timeout: 30s
+                            # Metrics endpoint → app's metrics port (9090)
                             - match:
                                 prefix: "/metrics"
                               route:
                                 cluster: app_metrics
                                 timeout: 5s
+                            # Default catch-all → API
                             - match:
                                 prefix: "/"
                               route:
@@ -71,7 +78,7 @@ data:
                       address:
                         socket_address:
                           address: 127.0.0.1
-                          port_value: {{ .Values.app.args.apiPort }}
+                          port_value: {{ .Values.frontendApi.app.args.apiPort }}
         - name: app_health
           connect_timeout: 5s
           type: STATIC
@@ -84,7 +91,7 @@ data:
                       address:
                         socket_address:
                           address: 127.0.0.1
-                          port_value: {{ .Values.app.args.healthPort }}
+                          port_value: {{ .Values.frontendApi.app.args.healthPort }}
         - name: app_metrics
           connect_timeout: 5s
           type: STATIC
@@ -97,9 +104,10 @@ data:
                       address:
                         socket_address:
                           address: 127.0.0.1
-                          port_value: {{ .Values.app.args.metricsPort }}
+                          port_value: {{ .Values.frontendApi.app.args.metricsPort }}
     admin:
       address:
         socket_address:
           address: 127.0.0.1
           port_value: 9901
+{{- end }}

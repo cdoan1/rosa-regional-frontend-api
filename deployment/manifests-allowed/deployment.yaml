@@ -1,0 +1,73 @@
+# =============================================================================
+# ROSA Regional Frontend API Deployment
+#
+# Direct deployment without Envoy sidecar.
+# Application exposes three ports:
+#   - 8000: API endpoints
+#   - 8081: Health checks
+#   - 9090: Metrics
+# =============================================================================
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rosa-regional-frontend
+  namespace: rosa-regional-frontend
+  labels:
+    app: rosa-regional-frontend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: rosa-regional-frontend
+  template:
+    metadata:
+      labels:
+        app: rosa-regional-frontend
+    spec:
+      containers:
+        - name: rosa-regional-frontend
+          image: quay.io/cdoan0/rosa-regional-frontend-api:nodb
+          imagePullPolicy: Always
+          args:
+            - serve
+            - --log-level=info
+            - --log-format=json
+            - --maestro-url=http://maestro:8000
+            - --allowed-accounts=123456789012
+            - --api-port=8000
+            - --health-port=8081
+            - --metrics-port=9090
+          ports:
+            - name: api
+              containerPort: 8000
+              protocol: TCP
+            - name: health
+              containerPort: 8081
+              protocol: TCP
+            - name: metrics
+              containerPort: 9090
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: health
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: health
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
