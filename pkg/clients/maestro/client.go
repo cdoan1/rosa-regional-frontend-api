@@ -15,7 +15,10 @@ import (
 )
 
 const (
-	consumersPath = "/api/maestro/v1/consumers"
+	consumersPath       = "/api/maestro/v1/consumers"
+	resourceBundlesPath = "/api/maestro/v1/resource-bundles"
+
+	// /api/maestro/v1/resource-bundles
 )
 
 // Client provides access to the Maestro API
@@ -172,4 +175,65 @@ func (c *Client) GetConsumer(ctx context.Context, id string) (*Consumer, error) 
 	c.logger.Debug("consumer retrieved", "id", consumer.ID, "name", consumer.Name)
 
 	return &consumer, nil
+}
+
+// ListResourceBundles lists resource bundles from Maestro with pagination and optional filters
+func (c *Client) ListResourceBundles(ctx context.Context, page, size int, search, orderBy, fields string) (*ResourceBundleList, error) {
+	u, err := url.Parse(c.baseURL + resourceBundlesPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse URL: %w", err)
+	}
+
+	q := u.Query()
+	if page > 0 {
+		q.Set("page", strconv.Itoa(page))
+	}
+	if size > 0 {
+		q.Set("size", strconv.Itoa(size))
+	}
+	if search != "" {
+		q.Set("search", search)
+	}
+	if orderBy != "" {
+		q.Set("orderBy", orderBy)
+	}
+	if fields != "" {
+		q.Set("fields", fields)
+	}
+	u.RawQuery = q.Encode()
+
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	c.logger.Debug("listing resource bundles from Maestro", "page", page, "size", size, "search", search)
+
+	resp, err := c.httpClient.Do(httpReq)
+	if err != nil {
+		return nil, fmt.Errorf("failed to send request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response: %w", err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		var apiErr Error
+		if json.Unmarshal(respBody, &apiErr) == nil && apiErr.Reason != "" {
+			return nil, &apiErr
+		}
+		return nil, fmt.Errorf("unexpected status code %d: %s", resp.StatusCode, string(respBody))
+	}
+
+	var list ResourceBundleList
+	if err := json.Unmarshal(respBody, &list); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal response: %w", err)
+	}
+
+	c.logger.Debug("resource bundles listed", "total", list.Total)
+
+	return &list, nil
 }

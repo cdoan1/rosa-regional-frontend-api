@@ -139,6 +139,76 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
+  /resource_bundles:
+    get:
+      summary: List all resource bundles
+      description: |
+        Returns a paginated list of resource bundles.
+        Supports filtering via search query and custom field selection.
+      operationId: listResourceBundles
+      tags:
+        - ResourceBundles
+      parameters:
+        - name: page
+          in: query
+          description: Page number (1-indexed)
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: size
+          in: query
+          description: Number of items per page
+          schema:
+            type: integer
+            minimum: 0
+            default: 100
+        - name: search
+          in: query
+          description: SQL-like filter criteria on resource attributes
+          schema:
+            type: string
+        - name: orderBy
+          in: query
+          description: SQL-like ordering (e.g., "name asc")
+          schema:
+            type: string
+        - name: fields
+          in: query
+          description: Comma-separated list of fields to return
+          schema:
+            type: string
+        - name: X-Operation-ID
+          in: header
+          description: Optional operation ID for tracking
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of resource bundles
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResourceBundleList'
+        '401':
+          description: Invalid authentication token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden - user lacks required permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
   /live:
     get:
       summary: Liveness probe
@@ -258,6 +328,96 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/ManagementCluster'
+
+    ResourceBundle:
+      type: object
+      description: A resource bundle containing manifests for deployment
+      required:
+        - id
+        - kind
+        - href
+        - name
+      properties:
+        id:
+          type: string
+          description: Unique identifier for the resource bundle
+        kind:
+          type: string
+          description: Resource kind
+          example: ResourceBundle
+        href:
+          type: string
+          description: API href reference
+        name:
+          type: string
+          description: Name of the resource bundle
+        consumer_name:
+          type: string
+          description: Name of the consumer this bundle is associated with
+        version:
+          type: integer
+          description: Version number of the resource bundle
+        created_at:
+          type: string
+          format: date-time
+          description: Creation timestamp
+        updated_at:
+          type: string
+          format: date-time
+          description: Last update timestamp
+        deleted_at:
+          type: string
+          format: date-time
+          description: Deletion timestamp (if soft-deleted)
+        metadata:
+          type: object
+          description: Additional metadata
+          additionalProperties:
+            type: string
+        manifests:
+          type: array
+          description: Array of Kubernetes manifests
+          items:
+            type: object
+        delete_option:
+          type: object
+          description: Deletion strategy for the resource bundle
+        manifest_configs:
+          type: array
+          description: Configuration for manifests
+          items:
+            type: object
+        status:
+          type: object
+          description: Status of the resource bundle
+
+    ResourceBundleList:
+      type: object
+      description: Paginated list of resource bundles
+      required:
+        - kind
+        - page
+        - size
+        - total
+        - items
+      properties:
+        kind:
+          type: string
+          description: Resource kind
+          example: ResourceBundleList
+        page:
+          type: integer
+          description: Current page number
+        size:
+          type: integer
+          description: Number of items per page
+        total:
+          type: integer
+          description: Total number of items
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ResourceBundle'
 
     Error:
       type: object
