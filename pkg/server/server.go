@@ -35,6 +35,7 @@ func New(cfg *config.Config, logger *slog.Logger) (*Server, error) {
 	// Create handlers
 	healthHandler := apphandlers.NewHealthHandler()
 	mgmtClusterHandler := apphandlers.NewManagementClusterHandler(maestroClient, logger)
+	resourceBundleHandler := apphandlers.NewResourceBundleHandler(maestroClient, logger)
 
 	// Create authorization middleware
 	authMiddleware := middleware.NewAuthorization(cfg.AllowedAccounts, logger)
@@ -49,6 +50,11 @@ func New(cfg *config.Config, logger *slog.Logger) (*Server, error) {
 	mgmtRouter.HandleFunc("", mgmtClusterHandler.Create).Methods(http.MethodPost)
 	mgmtRouter.HandleFunc("", mgmtClusterHandler.List).Methods(http.MethodGet)
 	mgmtRouter.HandleFunc("/{id}", mgmtClusterHandler.Get).Methods(http.MethodGet)
+
+	// Resource bundle routes (require allowed account)
+	rbRouter := apiRouter.PathPrefix("/api/v0/resource_bundles").Subrouter()
+	rbRouter.Use(authMiddleware.RequireAllowedAccount)
+	rbRouter.HandleFunc("", resourceBundleHandler.List).Methods(http.MethodGet)
 
 	// Health routes on API server (no auth required)
 	apiRouter.HandleFunc("/api/v0/live", healthHandler.Liveness).Methods(http.MethodGet)
